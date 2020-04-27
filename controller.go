@@ -7,6 +7,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io/ioutil"
 	_ "io/ioutil"
 	"net/http"
 	_ "os"
@@ -122,7 +123,7 @@ func processLogout(response http.ResponseWriter, request *http.Request) {
 		Value:    cookie.Value,
 		Expires:  cookie.Expires,
 		SameSite: cookie.SameSite,
-		MaxAge: -1,
+		MaxAge:   -1,
 	})
 
 	// TODO: delete the session from the database
@@ -148,9 +149,27 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 	//////////////////////////////////
 
 	// HINT: files should be stored in const filePath = "./files"
+	postFile, fileHeader, formErr := request.FormFile("file")
+	_ = postFile
+
+	if formErr != nil { // Error retrieving uploaded file
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(response, formErr.Error())
+		return
+	}
+
+	content, readErr := ioutil.ReadAll(postFile)
+	_ = content
+
+	if readErr != nil {
+		log.Fatal(readErr)
+		return
+	}
+
+	path := filePath + "/" + username + "/" + fileHeader.Filename
 
 	// replace this statement
-	fmt.Fprintf(response, "placeholder")
+	fmt.Fprintf(response, path)
 
 	//////////////////////////////////
 	// END TASK 3: YOUR CODE HERE
