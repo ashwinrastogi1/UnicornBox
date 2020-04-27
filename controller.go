@@ -11,6 +11,7 @@ import (
 	_ "io/ioutil"
 	"net/http"
 	_ "os"
+	"path/filepath"
 	_ "path/filepath"
 	"strings"
 	"text/template"
@@ -149,7 +150,10 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 	//////////////////////////////////
 
 	// HINT: files should be stored in const filePath = "./files"
-	postFile, fileHeader, formErr := request.FormFile("file")
+	const filePath = "./files"
+
+	// Retrieve file from request
+	postFile, fileHeader, formErr := request.FormFile("File")
 	_ = postFile
 
 	if formErr != nil { // Error retrieving uploaded file
@@ -158,6 +162,7 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 		return
 	}
 
+	// Read content from object
 	content, readErr := ioutil.ReadAll(postFile)
 	_ = content
 
@@ -166,10 +171,20 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 		return
 	}
 
-	path := filePath + "/" + username + "/" + fileHeader.Filename
+	// Close file reader
+	defer postFile.Close()
 
-	// replace this statement
-	fmt.Fprintf(response, path)
+	// Store files in data base
+	path := filepath.Join(filePath, username, fileHeader.Filename)
+	db.Exec("INSERT INTO files VALUES (?, ?, ?)", username, path, "")
+
+	// Store file in disk
+	storeErr := ioutil.WriteFile(path, content, 0644)
+	if storeErr != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(response, storeErr.Error())
+		return
+	}
 
 	//////////////////////////////////
 	// END TASK 3: YOUR CODE HERE
