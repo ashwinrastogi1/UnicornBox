@@ -97,6 +97,7 @@ func processLoginAttempt(response http.ResponseWriter, request *http.Request) {
 func processLogout(response http.ResponseWriter, request *http.Request) {
 	// get the session token cookie
 	cookie, err := request.Cookie("session_token")
+
 	// empty assignment to suppress unused variable warning
 	_, _ = cookie, err
 
@@ -108,11 +109,29 @@ func processLogout(response http.ResponseWriter, request *http.Request) {
 	//////////////////////////////////
 	// BEGIN TASK 2: YOUR CODE HERE
 	//////////////////////////////////
+	if username == "" {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(response, err.Error())
+		return
+	}
 
 	// TODO: clear the session token cookie in the user's browser
 	// HINT: to clear a cookie, set its MaxAge to -1
+	http.SetCookie(response, &http.Cookie{
+		Name:     cookie.Name,
+		Value:    cookie.Value,
+		Expires:  cookie.Expires,
+		SameSite: cookie.SameSite,
+		MaxAge: -1,
+	})
 
 	// TODO: delete the session from the database
+	_, err = db.Exec("DELETE FROM sessions WHERE username = ? AND token = ?", username, cookie.Value)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(response, err.Error())
+		return
+	}
 
 	//////////////////////////////////
 	// END TASK 2: YOUR CODE HERE
