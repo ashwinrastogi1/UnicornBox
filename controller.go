@@ -180,11 +180,13 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 	db.Exec("INSERT INTO files VALUES (?, ?, ?)", username, path, "")
 
 	// Store file in disk
-	dirErr := os.Mkdir(filepath.Join(filePath, username), 0700)
-	if dirErr != nil {
-		response.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(response, dirErr.Error())
-		return
+	if _, mkdirErr := os.Stat(filepath.Join(filePath, username)); os.IsNotExist(mkdirErr) {
+		dirErr := os.Mkdir(filepath.Join(filePath, username), 0700)
+		if dirErr != nil {
+			response.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(response, dirErr.Error())
+			return
+		}
 	}
 
 	storeErr := ioutil.WriteFile(path, content, 0644)
