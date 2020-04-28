@@ -14,6 +14,7 @@ import (
 	_ "os"
 	"path/filepath"
 	_ "path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 	"time"
@@ -155,11 +156,16 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 
 	// Retrieve file from request
 	postFile, fileHeader, formErr := request.FormFile("file")
-	_ = postFile
 
 	if formErr != nil { // Error retrieving uploaded file
 		response.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(response, formErr.Error())
+		return
+	}
+
+	if valid, nameErr := isValidFileName(fileHeader.Filename); !valid || nameErr != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(response, "Invalid filename")
 		return
 	}
 
@@ -272,6 +278,13 @@ func getFile(response http.ResponseWriter, request *http.Request, username strin
 	//////////////////////////////////
 	parts := strings.Split(fileString, "/")
 	requestFile := parts[len(parts)-1]
+
+	// Check that filename is valid
+	if valid, err := isValidFileName(requestFile); !valid || err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(response, requestFile+": Invalid filename")
+		return
+	}
 
 	fileQuery := "SELECT * FROM files WHERE filename = ? AND (owner = ? OR shared LIKE " + "'%" + username + " %')"
 	row := db.QueryRow(fileQuery, requestFile, username)
@@ -391,4 +404,16 @@ func initSession(response http.ResponseWriter, username string) {
 		Expires:  expires,
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+// Check if a given filename is valid
+func isValidFileName(name string) (bool, error) {
+	pattern := "([^a-zA-Z0-9\\.])+" // Check to see if invalid characters exist
+	matched, err := regexp.Match(pattern, []byte(name))
+
+	if err != nil {
+		return false, err
+	}
+
+	return !matched && 1 <= len(name) && len(name) <= 50, nil
 }
