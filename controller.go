@@ -168,7 +168,8 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 	_ = content
 
 	if readErr != nil {
-		log.Fatal(readErr)
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(response, readErr.Error())
 		return
 	}
 
