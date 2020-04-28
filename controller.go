@@ -271,8 +271,24 @@ func getFile(response http.ResponseWriter, request *http.Request, username strin
 	// BEGIN TASK 5: YOUR CODE HERE
 	//////////////////////////////////
 
+	fileQuery := "SELECT * FROM files WHERE filename = ? AND (owner = ? OR shared LIKE " + "'%" + username + " %')"
+	row := db.QueryRow(fileQuery, fileString, username)
+
+	var id int
+	var owner, path, filename, shared string
+
+	if fileErr := row.Scan(id, owner, path, filename, shared); fileErr != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(response, fileErr.Error())
+		return
+	}
+
+	// Attach file and change filename
+	http.ServeFile(response, request, path)
+	setNameOfServedFile(response, filename)
+
 	// replace this line
-	fmt.Fprintf(response, "placeholder")
+	//fmt.Fprintf(response, "placeholder")
 
 	//////////////////////////////////
 	// END TASK 5: YOUR CODE HERE
@@ -313,16 +329,15 @@ func processShare(response http.ResponseWriter, request *http.Request, sender st
 		fmt.Fprint(response, err.Error())
 		return
 	}
-	
 
 	// Confirm file exists
 	query = "SELECT * from files WHERE owner = ? AND filename = ?"
 	row = db.QueryRow(query, sender, filename)
 	var (
-		id int
-		owner string
-		path string
-		fname string
+		id     int
+		owner  string
+		path   string
+		fname  string
 		shared string
 	)
 
