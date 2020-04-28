@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	_ "io/ioutil"
 	"net/http"
+	"os"
 	_ "os"
 	"path/filepath"
 	_ "path/filepath"
@@ -153,7 +154,7 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 	const filePath = "./files"
 
 	// Retrieve file from request
-	postFile, fileHeader, formErr := request.FormFile("File")
+	postFile, fileHeader, formErr := request.FormFile("file")
 	_ = postFile
 
 	if formErr != nil { // Error retrieving uploaded file
@@ -179,6 +180,13 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 	db.Exec("INSERT INTO files VALUES (?, ?, ?)", username, path, "")
 
 	// Store file in disk
+	dirErr := os.Mkdir(filepath.Join(filePath, username), 0700)
+	if dirErr != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(response, dirErr.Error())
+		return
+	}
+
 	storeErr := ioutil.WriteFile(path, content, 0644)
 	if storeErr != nil {
 		response.WriteHeader(http.StatusInternalServerError)
