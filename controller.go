@@ -270,16 +270,18 @@ func getFile(response http.ResponseWriter, request *http.Request, username strin
 	//////////////////////////////////
 	// BEGIN TASK 5: YOUR CODE HERE
 	//////////////////////////////////
+	parts := strings.Split(fileString, "/")
+	requestFile := parts[len(parts)-1]
 
 	fileQuery := "SELECT * FROM files WHERE filename = ? AND (owner = ? OR shared LIKE " + "'%" + username + " %')"
-	row := db.QueryRow(fileQuery, fileString, username)
+	row := db.QueryRow(fileQuery, requestFile, username)
 
 	var id int
 	var owner, path, filename, shared string
 
-	if fileErr := row.Scan(id, owner, path, filename, shared); fileErr != nil {
+	if fileErr := row.Scan(&id, &owner, &path, &filename, &shared); fileErr != nil {
 		response.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(response, fileErr.Error())
+		fmt.Fprintf(response, requestFile+": "+fileErr.Error()) //fileErr.Error()
 		return
 	}
 
