@@ -177,7 +177,7 @@ func processUpload(response http.ResponseWriter, request *http.Request, username
 
 	// Store files in data base
 	path := filepath.Join(filePath, username, fileHeader.Filename)
-	db.Exec("INSERT INTO files VALUES (?, ?, ?)", username, path, "")
+	db.Exec("INSERT INTO files VALUES (NULL, ?, ?, ?, ?)", username, path, fileHeader.Filename, "")
 
 	// Store file in disk
 	if _, mkdirErr := os.Stat(filepath.Join(filePath, username)); os.IsNotExist(mkdirErr) {
@@ -217,9 +217,31 @@ func listFiles(response http.ResponseWriter, request *http.Request, username str
 
 	// TODO: for each of the user's files, add a
 	// corresponding fileInfo struct to the files slice.
+	query := "SELECT * FROM files WHERE owner = ?"
+	rows, err := db.Query(query, username)
+	if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(response, err.Error())
+		return
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+		var id int
+		var shared string
+		var tempInfo fileInfo
+
+		if err := rows.Scan(&id, &tempInfo.FileOwner, &tempInfo.FilePath, &tempInfo.Filename, &shared); err != nil {
+			response.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(response, err.Error())
+			return
+		}
+
+		files = append(files, tempInfo)
+	}
 
 	// replace this line
-	fmt.Fprintf(response, "placeholder")
 
 	//////////////////////////////////
 	// END TASK 4: YOUR CODE HERE
