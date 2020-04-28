@@ -217,7 +217,7 @@ func listFiles(response http.ResponseWriter, request *http.Request, username str
 
 	// TODO: for each of the user's files, add a
 	// corresponding fileInfo struct to the files slice.
-	query := "SELECT * FROM files WHERE owner = ?"
+	query := "SELECT * FROM files WHERE owner = ? OR shared LIKE " + "'%" + username + " %'"
 	rows, err := db.Query(query, username)
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
@@ -298,8 +298,48 @@ func processShare(response http.ResponseWriter, request *http.Request, sender st
 	// BEGIN TASK 6: YOUR CODE HERE
 	//////////////////////////////////
 
-	// replace this line
-	fmt.Fprintf(response, "placeholder")
+	// Confirm recipient exists
+	query := "SELECT username from users WHERE username = ?"
+	row := db.QueryRow(query, recipient)
+	var username string
+
+	err := row.Scan(&username)
+	if err == sql.ErrNoRows {
+		response.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(response, "unknown recipient")
+		return
+	} else if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(response, err.Error())
+		return
+	}
+	
+
+	// Confirm file exists
+	query = "SELECT * from files WHERE owner = ? AND filename = ?"
+	row = db.QueryRow(query, sender, filename)
+	var (
+		id int
+		owner string
+		path string
+		fname string
+		shared string
+	)
+
+	err = row.Scan(&id, &owner, &path, &fname, &shared)
+	if err == sql.ErrNoRows {
+		response.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(response, "unknown filename")
+		return
+	} else if err != nil {
+		response.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(response, err.Error())
+		return
+	}
+
+	// Add recipient to shared field
+	shared += recipient + " "
+	db.Exec("UPDATE files SET shared = ? WHERE id = ?", shared, id)
 
 	//////////////////////////////////
 	// END TASK 6: YOUR CODE HERE
