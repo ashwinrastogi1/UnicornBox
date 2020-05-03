@@ -300,8 +300,8 @@ func getFile(response http.ResponseWriter, request *http.Request, username strin
 	}
 
 	// Attach file and change filename
-	http.ServeFile(response, request, path)
 	setNameOfServedFile(response, filename)
+	http.ServeFile(response, request, path)
 
 	// replace this line
 	//fmt.Fprintf(response, "placeholder")
